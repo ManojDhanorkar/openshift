@@ -1,0 +1,20 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: sample-scaledobject
+spec:
+  cooldownPeriod: 300
+  maxReplicaCount: 5
+  minReplicaCount: 1
+  pollingInterval: 30
+  scaleTargetRef:
+    kind: Deployment
+    name: sample
+  triggers:
+    - metadata:
+        metricType: Value
+        name: sample-metric
+        query: http_requests_total
+        serverAddress: 'http://prometheus.monitoring.svc.cluster.local:9090'
+        threshold: '20'
+      type: prometheus
