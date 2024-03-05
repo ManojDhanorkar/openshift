@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: awebserver
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: awebserverpvc-readwriteonce
+  namespace: awebserver
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: crc-csi-hostpath-provisioner
+  volumeMode: Filesystem
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: webserver1
+  name: webserver1
+  namespace: awebserver
+spec:
+  containers:
+  - image: nginx:alpine
+    name: webserver1
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+    volumeMounts:
+    - mountPath: /test1
+      name: test-vol1
+  volumes:
+  - name: test-vol1
+    persistentVolumeClaim:
+      claimName: awebserverpvc-readwriteonce
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: webserver2
+  name: webserver2
+  namespace: awebserver
+spec:
+  containers:
+  - image: nginx:alpine
+    name: webserver2
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+    volumeMounts:
+    - mountPath: /test2
+      name: test-vol2
+  volumes:
+  - name: test-vol2
+    persistentVolumeClaim:
+      claimName: awebserverpvc-readwriteonce
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: awebserverpvc-readwriteoncepod
+  namespace: awebserver
+spec:
+  accessModes:
+  - ReadWriteOncePod
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: crc-csi-hostpath-provisioner
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: webserver3
+  name: webserver3
+  namespace: awebserver
+spec:
+  containers:
+  - image: nginx:alpine
+    name: webserver3
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+    volumeMounts:
+    - mountPath: /test3
+      name: test-vol3
+  volumes:
+  - name: test-vol3
+    persistentVolumeClaim:
+      claimName: awebserverpvc-readwriteoncepod
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: webserver4
+  name: webserver4
+  namespace: awebserver
+spec:
+  containers:
+  - image: nginx:alpine
+    name: webserver4
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+    volumeMounts:
+    - mountPath: /test4
+      name: test-vol4
+  volumes:
+  - name: test-vol4
+    persistentVolumeClaim:
+      claimName: awebserverpvc-readwriteoncepod
