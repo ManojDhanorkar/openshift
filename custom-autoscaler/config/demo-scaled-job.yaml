@@ -1,0 +1,105 @@
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-consumer-secret
+  namespace: arabbitmq-demo
+data:
+  RabbitMqHost: <token>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-consumer
+  namespace: arabbitmq-demo
+  labels:
+    app: rabbitmq-consumer
+spec:
+  selector:
+    matchLabels:
+      app: rabbitmq-consumer
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-consumer
+    spec:
+      containers:
+        - name: rabbitmq-consumer
+          image: ghcr.io/kedacore/rabbitmq-client:v1.0
+          imagePullPolicy: Always
+          command:
+            - receive
+          args:
+            - "amqp://user:PASSWORD@rabbitmq.arabbitmq-demo.svc.cluster.local:5672"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: rabbitmq-consumer
+  namespace: arabbitmq-demo
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        containers:
+        - name: demo-rabbitmq-client
+          image: demo-rabbitmq-client:1
+          imagePullPolicy: Always
+          command: ["receive",  "amqp://user:PASSWORD@rabbitmq.arabbitmq-demo.svc.cluster.local:5672"]
+          envFrom:
+            - secretRef:
+                name: rabbitmq-consumer-secret
+        restartPolicy: Never
+    backoffLimit: 4  
+  pollingInterval: 10             # Optional. Default: 30 seconds
+  maxReplicaCount: 30             # Optional. Default: 100
+  successfulJobsHistoryLimit: 3   # Optional. Default: 100. How many completed jobs should be kept.
+  failedJobsHistoryLimit: 2       # Optional. Default: 100. How many failed jobs should be kept.
+  scalingStrategy:
+    strategy: "custom"                        # Optional. Default: default. Which Scaling Strategy to use.
+    customScalingQueueLengthDeduction: 1      # Optional. A parameter to optimize custom ScalingStrategy.
+    customScalingRunningJobPercentage: "0.5"  # Optional. A parameter to optimize custom ScalingStrategy.
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: hello
+        queueLength: "5"
+      authenticationRef:
+        name: rabbitmq-consumer-trigger
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-consumer-trigger
+  namespace: arabbitmq-demo
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: rabbitmq-consumer-secret
+      key: RabbitMqHost
+---
+
+# Job to generate traffic to rabbitmq
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-publish
+  namespace: arabbitmq-demo
+spec:
+  template:
+    spec:
+      containers:
+        - name: rabbitmq-client
+          image: ghcr.io/kedacore/rabbitmq-client:v1.0
+          imagePullPolicy: Always
+          command:
+            [
+              "send",
+              "amqp://user:PASSWORD@rabbitmq.arabbitmq-demo.svc.cluster.local:5672",
+              "300",
+            ]
+      restartPolicy: Never
+  backoffLimit: 4
+---
+
