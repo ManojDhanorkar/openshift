@@ -1,0 +1,51 @@
+https://nimrodshn.medium.com/how-to-deploy-prometheus-on-openshift-4-and-configure-it-to-scrape-pods-metrics-a020ed03d5d8
+
+oc new-project monitoring && oc project monitoring
+oc new-app prom/prometheus
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prom_role_binding
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: monitoring
+roleRef:
+  kind: ClusterRole
+  name: prometheus
+  apiGroup: rbac.authorization.k8s.io
+---
+
+
+oc create configmap prom-config --from-file=prometheus.yml
+
+      volumes:
+      - emptyDir: {}
+        name: prometheus-volume-1
+      - configMap:
+          defaultMode: 420
+          name: prom-config
+        name: prom-config-volume
+		
+        volumeMounts:
+        - mountPath: /prometheus
+          name: prometheus-volume-1
+        - mountPath: /etc/prometheus/
+          name: prom-config-volume
+
